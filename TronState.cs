@@ -1,4 +1,5 @@
 ﻿using Celeste;
+using Celeste.Mod;
 using Microsoft.Xna.Framework;
 using Monocle;
 using System;
@@ -28,14 +29,8 @@ namespace BrokemiaHelper {
         private Color? lastColor;
         private float trailFade = 1;
 
-        public TronState() : base(true, true) {
-        }
-
-        public override void Added(Entity entity) {
-            base.Added(entity);
-            if (entity is Player player) {
-                TronStateID = player.StateMachine.AddState(TronUpdate, TronCoroutine, TronBegin, TronEnd);
-            }
+        public TronState(Player player) : base(true, true) {
+            TronStateID = player.StateMachine.AddState(TronUpdate, TronCoroutine, TronBegin, TronEnd);
         }
 
         public override void Update() {
@@ -231,13 +226,17 @@ namespace BrokemiaHelper {
         }
 
         public static void Load() {
-            On.Celeste.Player.ctor += Player_ctor;
+            Everest.Events.Player.OnRegisterStates += Player_OnRegisterStates;
             On.Celeste.Player.Render += Player_Render;
             On.Celeste.PlayerDeadBody.Awake += PlayerDeadBody_Awake;
             On.Celeste.Player.UpdateHair += Player_UpdateHair;
             On.Celeste.Player.UpdateSprite += Player_UpdateSprite;
             On.Celeste.Player.OnCollideH += Player_OnCollideH;
             On.Celeste.Player.OnCollideV += Player_OnCollideV;
+        }
+
+        private static void Player_OnRegisterStates(Player player) {
+            player.Add(new TronState(player));
         }
 
         private static void PlayerDeadBody_Awake(On.Celeste.PlayerDeadBody.orig_Awake orig, PlayerDeadBody self, Scene scene) {
@@ -304,13 +303,8 @@ namespace BrokemiaHelper {
             }
         }
 
-        private static void Player_ctor(On.Celeste.Player.orig_ctor orig, Player self, Vector2 position, PlayerSpriteMode spriteMode) {
-            orig(self, position, spriteMode);
-            self.Add(new TronState());
-        }
-
         public static void Unload() {
-            On.Celeste.Player.ctor -= Player_ctor;
+            Everest.Events.Player.OnRegisterStates -= Player_OnRegisterStates;
             On.Celeste.Player.Render -= Player_Render;
             On.Celeste.PlayerDeadBody.Awake -= PlayerDeadBody_Awake;
             On.Celeste.Player.UpdateHair -= Player_UpdateHair;

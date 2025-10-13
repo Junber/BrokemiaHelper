@@ -1,4 +1,5 @@
 ﻿using Celeste;
+using Celeste.Mod;
 using Celeste.Mod.Entities;
 using Microsoft.Xna.Framework;
 using Monocle;
@@ -7,11 +8,18 @@ namespace BrokemiaHelper {
     [CustomEntity("BrokemiaHelper/theoRespawn")]
     [Tracked]
     class TheoRespawn : Entity {
+        private const string TheoCrystalName = "theoCrystal";
 
         public string flag;
+        private Vector2 positionBeforeOffset;
+        private Vector2 offset;
+        private string entityToSpawn;
 
         public TheoRespawn(EntityData data, Vector2 offset) : base(data.Position + offset) {
             flag = data.Attr("flag");
+            entityToSpawn = data.Attr("entityToSpawn", TheoCrystalName);
+            positionBeforeOffset = data.Position;
+            this.offset = offset;
         }
 
         public override void Added(Scene scene) {
@@ -41,7 +49,15 @@ namespace BrokemiaHelper {
                 }
             }
 
-            scene.Add(new TheoCrystal(Position));
+            var crystal = entityToSpawn == TheoCrystalName
+                ? new TheoCrystal(Position)
+                // Allow for spawning arbitrary modded entities
+                // Entity data is empty, so will likely be broken for many of them, but I mostly just care about extended variant crystals
+                : Level.EntityLoaders[entityToSpawn](level, level.Session.LevelData, offset, new EntityData {
+                    Name = entityToSpawn,
+                    Position = positionBeforeOffset
+                });
+            scene.Add(crystal);
             RemoveSelf();
         }
 

@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Monocle;
 using MonoMod.Utils;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BrokemiaHelper {
 
@@ -37,6 +38,7 @@ namespace BrokemiaHelper {
 
         private bool blocksDisplacement;
 
+        // Whether master of the group or not, all share the same group list instance
         public List<CaveWall> Group;
 
         public Point GroupBoundsMin;
@@ -73,16 +75,14 @@ namespace BrokemiaHelper {
         }
 
         private static void TalkComponentUI_Update(On.Celeste.TalkComponent.TalkComponentUI.orig_Update orig, TalkComponent.TalkComponentUI self) {
-            DynamicData selfData = new DynamicData(self);
             orig(self);
-            float tempAlpha = selfData.Get<float>("alpha");
             if (self.Handler.Entity != null && self.Scene.CollideCheck<CaveWall>(self.Handler.Entity.Position)) {
                 CaveWall collided = self.Scene.CollideFirst<CaveWall>(self.Handler.Entity.Position);
                 if (collided.Alpha >= 1 || collided.FadeIn) {
                     // The collision checking for vanilla FakeWalls will handle fading in appropriately
                     // Fade out twice as fast if not colliding with a fake wall, in order to counter the effects of orig(self);
                     float factor = self.Scene.CollideCheck<FakeWall>(self.Handler.Entity.Position) ? 2f : 4f;
-                    selfData.Set("alpha", Calc.Approach(tempAlpha, 0f, factor * Engine.DeltaTime));
+                    self.alpha = Calc.Approach(self.alpha, 0f, factor * Engine.DeltaTime);
                 }
             }
         }
@@ -90,8 +90,7 @@ namespace BrokemiaHelper {
         private static void TalkComponentUI_Awake(On.Celeste.TalkComponent.TalkComponentUI.orig_Awake orig, TalkComponent.TalkComponentUI self, Scene scene) {
             orig(self, scene);
             if (self.Handler.Entity == null || self.Scene.CollideCheck<CaveWall>(self.Handler.Entity.Position)) {
-                DynamicData selfData = new DynamicData(self);
-                selfData.Set("alpha", 0f);
+                self.alpha = 0;
             }
         }
 
@@ -108,6 +107,7 @@ namespace BrokemiaHelper {
             this.disableTransitionFading = disableTransitionFading;
             Collider = new Hitbox(width, height);
             Depth = -13001;
+            // The EffectCutout is responsible for hiding obscured lights
             Add(cutout = new EffectCutout());
             Add(new DisplacementRenderHook(RenderDisplacement));
         }
@@ -139,9 +139,9 @@ namespace BrokemiaHelper {
                 Rectangle rectangle = new Rectangle(GroupBoundsMin.X / 8, GroupBoundsMin.Y / 8, (GroupBoundsMax.X - GroupBoundsMin.X) / 8 + 1, (GroupBoundsMax.Y - GroupBoundsMin.Y) / 8 + 1);
                 Level level = SceneAs<Level>();
                 Rectangle tileBounds = level.Session.MapData.TileBounds;
-                VirtualMap<char> backupTiles = new(level.SolidsData.Rows, level.SolidsData.Columns);
+                VirtualMap<char> backupTiles = new(level.SolidsData.Columns, level.SolidsData.Rows);
                 // Might be a better way of tracking this
-                VirtualMap<bool> tileOverwritten = new(level.SolidsData.Rows, level.SolidsData.Columns, false);
+                VirtualMap<bool> tileOverwritten = new(level.SolidsData.Columns, level.SolidsData.Rows, false);
                 foreach (CaveWall item in Group) {
                     int x = (int) (item.X / 8f) - level.Session.MapData.TileBounds.X;
                     int y = (int) (item.Y / 8f - level.Session.MapData.TileBounds.Y);
@@ -187,10 +187,13 @@ namespace BrokemiaHelper {
             TryToInitPosition();
 
             if (CollideCheck<Player>()) {
-                tiles.Alpha = 0f;
-                fadeOut = true;
-                fadeIn = false;
-                cutout.Alpha = 0;
+                // Make sure all the other blocks in the group get the memo
+                foreach (var entity in Group) {
+                    entity.tiles.Alpha = 0f;
+                    entity.fadeOut = true;
+                    entity.fadeIn = false;
+                    entity.cutout.Alpha = 0;
+                }
             }
 
             if (!disableTransitionFading) {
@@ -232,6 +235,7 @@ namespace BrokemiaHelper {
             Group.Add(from);
             if (from != this) {
                 from.master = this;
+                from.Group = Group;
             }
             foreach (CaveWall entity in Scene.Tracker.GetEntities<CaveWall>()) {
                 if (!entity.HasGroup && (Scene.CollideCheck(new Rectangle((int) from.X - 1, (int) from.Y, (int) from.Width + 2, (int) from.Height), entity) || Scene.CollideCheck(new Rectangle((int) from.X, (int) from.Y - 1, (int) from.Width, (int) from.Height + 2), entity))) {

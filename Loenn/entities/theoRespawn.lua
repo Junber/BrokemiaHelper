@@ -7,7 +7,8 @@ respawn.depth = 100
 respawn.placements = {
     name = "respawn",
     data = {
-        flag = ""
+        flag = "",
+        entityToSpawn = "theoCrystal"
     }
 }
 

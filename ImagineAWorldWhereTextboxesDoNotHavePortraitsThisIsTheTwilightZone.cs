@@ -13,6 +13,9 @@ namespace BrokemiaHelper {
                 return;
             if (self.Nodes[self.index] is not FancyText.Portrait portrait)
                 return;
+            // Still closing previous portrait box
+            if (self.ease > 0)
+                return;
             if (string.IsNullOrEmpty(portrait.Sprite))
                 return;
             if (!GFX.PortraitsSpriteBank.Has(portrait.SpriteId))

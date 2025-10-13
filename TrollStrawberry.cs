@@ -85,7 +85,7 @@ namespace BrokemiaHelper {
                 });
             }
             if (data.Nodes != null && data.Nodes.Length != 0) {
-                seeds = new List<GenericStrawberrySeed>();
+                seeds = [];
                 for (int i = 0; i < data.Nodes.Length; i++) {
                     Seeds.Add(new GenericStrawberrySeed(this, offset + data.Nodes[i], i, false));
                 }
