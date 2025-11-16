@@ -43,6 +43,7 @@ namespace BrokemiaHelper
         }
 
         private static bool celesteNetConnected {
+            [MethodImpl(MethodImplOptions.NoInlining)]
             get {
                 return CelesteNetClientModule.Instance?.Client?.Con != null;
             }
